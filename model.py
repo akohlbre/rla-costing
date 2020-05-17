@@ -88,4 +88,5 @@ def calculateTotalCost():
 if (__name__ == "__main__"):
     assert(validateInputs())
     #TODO should probably print out all the vars nicely to let user validate
-    print(calculateTotalCost())
+    print("Calculating total cost of audit:")
+    print("$", calculateTotalCost())
