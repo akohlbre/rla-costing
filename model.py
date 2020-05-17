@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import math
 # TODO -- all vars will be configurable in final version
 population = 10000
 turnoutPercent = 0.6
@@ -10,15 +11,15 @@ hourlyRate = 20 # $
 scanningRate = 200 # ballots per hour
 boxSize = 400 # ballots per box
 isPilot = True
+#isPilot = False
 contestsCount = 1
 
 turnoutCount = population * turnoutPercent
 
-sampleSize = 62 # TODO calculate, not const
 pollingTimePerBallotSetup = 0.00004796 # TODO calculate, not const
 pollingTimePerBallotExecute = False #TODO
 comparisonTimePerBallotSetup = 0.00133333 # TODO calculate, not const
-comparisonTimePerBallotExecute = 0.00047962 # TODO calculate, not const
+comparisonHandleBoxesTime = 0.00047962 # TODO calculate, not const
 pullSampleTime = 0.0337 #TODO
 comparisonAdjudicateTime = 0.0111 #TODO
 TIME_TO_GENERATE_SEED = 0.93 # TODO check
@@ -42,14 +43,27 @@ def laborPrep():
     assert(isBallotComparison)
     return comparisonTimePerBallotSetup * turnoutCount
 
+# taken from Stark 2010b, eqn 17
+def calculateSampleSizeComparison():
+    gamma = 1.03905 # inflator, this seems to be standard value
+    k = 1.0 # number of 1-vote overstatements
+    alpha = riskLimit / 100.0 # risk limit
+    mu = margin / 100.0 # margin
+    sample = -2.0 * gamma * \
+            (math.log(alpha) + k * math.log(1.0 - (1.0/(2.0*gamma)))) * \
+            (1.0/mu)
+    print("sample", sample)
+    return sample
+
 def laborExecute():
     if (isBallotPolling):
         assert(False) #TODO
     assert(isBallotComparison)
     #TODO confirm below, probs sep into indiv sections
-    return (turnoutCount * comparisonTimePerBallotExecute) + \
-           (sampleSize   * pullSampleTime) + \
-           (sampleSize   * comparisonAdjudicateTime)
+    sampleSizeComparison = calculateSampleSizeComparison()
+    return (turnoutCount         * comparisonHandleBoxesTime) + \
+           (sampleSizeComparison * pullSampleTime) + \
+           (sampleSizeComparison * comparisonAdjudicateTime)
 
 laborFunctions = [laborPrep, laborExecute, laborGenerateSeed]
 def calculateLaborCosts():
