@@ -1,18 +1,20 @@
 #!/usr/bin/python3
 import math
 # TODO -- all vars will be configurable in final version
+# TODO -- change infra costs name and distribution
 population = 10000
 turnoutPercent = 0.6
 margin = 5 # percentage points
 isBallotPolling = False
 isBallotComparison = True
-riskLimit = 5
+riskLimit = 10
 hourlyRate = 20 # $
 scanningRate = 200 # ballots per hour
 boxSize = 400 # ballots per box
 isPilot = True
 #isPilot = False
 contestsCount = 1
+chanceToComplete = 0.75
 
 turnoutCount = population * turnoutPercent
 
@@ -54,6 +56,25 @@ def calculateSampleSizeComparison():
             (1.0/mu)
     print("sample", sample)
     return sample
+
+#TODO settle on an approach, integrate
+def calculateSampleSizePolling():
+    s = 0.5 + (margin/100.0) # winner's reported vote share
+    for n in range(1, 10000, 1):
+        expectedSuc = n*s
+        expectedUnsuc = n - expectedSuc
+        expectedT = math.pow(2.0*s, expectedSuc) * math.pow(2.0*(1.0-s), expectedUnsuc)
+        if (expectedT > 100/riskLimit):
+            print("expected sample needed", n)
+            return n
+
+    def ASN():
+        zw = math.log(2.0*s)
+        zl = math.log(2.0 * (1-s))
+        asn = math.ceil((math.log(1.0/0.1) + zw/2.0) / (s * zw + (1-s)*zl))
+        print("asn", asn)
+
+    ASN()
 
 def laborExecute():
     if (isBallotPolling):
@@ -104,3 +125,4 @@ if (__name__ == "__main__"):
     #TODO should probably print out all the vars nicely to let user validate
     print("Calculating total cost of audit:")
     print("$", calculateTotalCost())
+    calculateSampleSizePolling()
