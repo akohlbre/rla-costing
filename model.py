@@ -1,30 +1,27 @@
 #!/usr/bin/python3
 import math
 # TODO -- all vars will be configurable in final version
-# TODO -- change infra costs name and distribution
 population = 10000
 turnoutPercent = 0.6
-margin = 5 # percentage points
-isBallotPolling = False
-isBallotComparison = True
-riskLimit = 10
+margin = 1.5 # percentage points
+isBallotPolling = True
+isBallotComparison = False
+riskLimit = 5
 hourlyRate = 20 # $
 scanningRate = 200 # ballots per hour
 boxSize = 400 # ballots per box
 isPilot = True
 #isPilot = False
 contestsCount = 1
-chanceToComplete = 0.75
+numberLocations = 3
 
 turnoutCount = population * turnoutPercent
 
-pollingTimePerBallotSetup = 0.00004796 # TODO calculate, not const
-pollingTimePerBallotExecute = False #TODO
-comparisonTimePerBallotSetup = 0.00133333 # TODO calculate, not const
-comparisonHandleBoxesTime = 0.00047962 # TODO calculate, not const
-pullSampleTime = 0.0337 #TODO
-comparisonAdjudicateTime = 0.0111 #TODO
-TIME_TO_GENERATE_SEED = 0.93 # TODO check
+scanTime = 0.00295204
+executionTime = 0.06297962
+createManifestTime = 0.00004796
+generateSeedTime = 0.93
+
 PILOT_PENALTY = 0.3 #TODO temp value, confirm. make configurable?
 
 #TODO add to this as we add inputs
@@ -37,13 +34,14 @@ def validateInputs():
     return True
 
 def laborGenerateSeed():
-    return TIME_TO_GENERATE_SEED
+    return generateSeedTime * numberLocations
 
-def laborPrep():
-    if (isBallotPolling):
-        return pollingTimePerBallotSetup * turnoutCount
-    assert(isBallotComparison)
-    return comparisonTimePerBallotSetup * turnoutCount
+def laborCreateManifest():
+    return turnoutCount * createManifestTime
+
+def laborScan():
+    if (isBallotPolling): return 0
+    return turnoutCount * scanTime
 
 # taken from Stark 2010b, eqn 17
 def calculateSampleSizeComparison():
@@ -54,39 +52,24 @@ def calculateSampleSizeComparison():
     sample = -2.0 * gamma * \
             (math.log(alpha) + k * math.log(1.0 - (1.0/(2.0*gamma)))) * \
             (1.0/mu)
-    print("sample", sample)
-    return sample
+    return min(sample, turnoutCount)
 
-#TODO settle on an approach, integrate
+# adapted from https://www.stat.berkeley.edu/~stark/Vote/ballotPollTools.htm
 def calculateSampleSizePolling():
     s = 0.5 + (margin/100.0) # winner's reported vote share
-    for n in range(1, 10000, 1):
-        expectedSuc = n*s
-        expectedUnsuc = n - expectedSuc
-        expectedT = math.pow(2.0*s, expectedSuc) * math.pow(2.0*(1.0-s), expectedUnsuc)
-        if (expectedT > 100/riskLimit):
-            print("expected sample needed", n)
-            return n
-
-    def ASN():
-        zw = math.log(2.0*s)
-        zl = math.log(2.0 * (1-s))
-        asn = math.ceil((math.log(1.0/0.1) + zw/2.0) / (s * zw + (1-s)*zl))
-        print("asn", asn)
-
-    ASN()
+    zw = math.log(2.0*s)
+    zl = math.log(2.0 * (1-s))
+    asn = math.ceil((math.log(1.0/(riskLimit/100.0)) + zw/2.0) / (s * zw + (1-s)*zl))
+    return min(asn, turnoutCount)
 
 def laborExecute():
     if (isBallotPolling):
-        assert(False) #TODO
-    assert(isBallotComparison)
-    #TODO confirm below, probs sep into indiv sections
-    sampleSizeComparison = calculateSampleSizeComparison()
-    return (turnoutCount         * comparisonHandleBoxesTime) + \
-           (sampleSizeComparison * pullSampleTime) + \
-           (sampleSizeComparison * comparisonAdjudicateTime)
+        sampleSize = calculateSampleSizePolling()
+    else:
+        sampleSize = calculateSampleSizeComparison()
+    return sampleSize * executionTime
 
-laborFunctions = [laborPrep, laborExecute, laborGenerateSeed]
+laborFunctions = [laborGenerateSeed, laborCreateManifest, laborScan, laborExecute]
 def calculateLaborCosts():
     totalHours = 0
     for laborFunction in laborFunctions:
@@ -98,21 +81,17 @@ def calculateLaborCosts():
 
 #TODO allow to be configured? add justification?
 def consumablesCosts():
-    return 50
+    return 50 * numberLocations
 
-#TODO allow to be configured? add justification?
-def techCosts():
-    return 250 + 199
+otherCostsFunctions = [consumablesCosts]
 
-infraFunctions = [consumablesCosts, techCosts]
-
-def calculateInfrastructureCosts():
+def calculateOtherCosts():
     total = 0
-    for infraFunction in infraFunctions:
-        total += infraFunction()
+    for otherCostsFunction in otherCostsFunctions:
+        total += otherCostsFunction()
     return total
 
-costFunctions = [calculateLaborCosts, calculateInfrastructureCosts]
+costFunctions = [calculateLaborCosts, calculateOtherCosts]
     
 def calculateTotalCost():
     total = 0
@@ -125,4 +104,3 @@ if (__name__ == "__main__"):
     #TODO should probably print out all the vars nicely to let user validate
     print("Calculating total cost of audit:")
     print("$", calculateTotalCost())
-    calculateSampleSizePolling()
