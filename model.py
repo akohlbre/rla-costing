@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 import math
 import csv
+from argparse import ArgumentParser
 margin = 10.0 # percentage points
 rlaType = "comparison"
 riskLimit = 10.0
@@ -198,7 +199,11 @@ def calculateTotalCost():
     return total
 
 if (__name__ == "__main__"):
-    getInputs("RI_test.csv")
+    parser = ArgumentParser()
+    parser.add_argument("-f", "--file", dest="filename", metavar="FILE",
+            help="input CSV file to read", default="state.csv")
+    args = parser.parse_args()
+    getInputs(args.filename)
     assert(validateInputs())
     print("Calculating total cost of audit:")
     print("$", calculateTotalCost())
