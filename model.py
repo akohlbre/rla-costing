@@ -2,14 +2,13 @@
 import math
 import csv
 from argparse import ArgumentParser
-margin = 1.0 # percentage points
-rlaType = "polling"
+margin = 2.8 # percentage points
+rlaType = "comparison"
 riskLimit = 10.0
 hourlyRate = 20.0 # $
-isPilot = True
-contestsCount = 3.0
-numberLocations = 1.0
-turnoutCount = 500000
+isPilot = False
+numberLocations = 92.0
+turnoutCount = 3751016.0
 
 scanTime = 0.00295204
 executionTime = 0.0638
@@ -59,13 +58,6 @@ def getInputs(inputFile):
             elif key == "pilot":
                 global isPilot
                 isPilot = (value == "yes")
-            elif key == "number of contests":
-                try:
-                    global contestsCount
-                    contestsCount = float(value)
-                except:
-                    print(f'Couldn\'t parse the number of contests: {value}')
-                    return false
             elif key == "number of locations":
                 try:
                     global numberLocations
@@ -132,9 +124,6 @@ def validateInputs():
     if not (0 <= margin and margin <=100):
         print(f'margin is invalid: must be between 0 and 100, is {margin}')
         return False
-    if not (1 <= contestsCount and contestsCount < 100):
-        print(f'number of contests is invalid, must be between 1 and 99, is {contestsCount}')
-        return False
     if not (0 < riskLimit and riskLimit < 30):
         if (riskLimit > 30 and riskLimit < 100):
             print(f'Nonstandard risk limit({riskLimit}%, going ahead anyway')
@@ -144,7 +133,7 @@ def validateInputs():
     print("Calculating costs with these settings:")
     print(f'An election with {turnoutCount} ballots where the margin is {margin} points.')
     pilotString = "pilot " if isPilot else ""
-    print(f'Conducting a {pilotString}ballot-{rlaType} audit on {contestsCount} contest(s) with a risk limit of {riskLimit} percent')
+    print(f'Conducting a {pilotString}ballot-{rlaType} audit with a risk limit of {riskLimit} percent')
     print(f'and employees paid ${hourlyRate} per hour.')
     print("\n")
     return True
@@ -157,6 +146,7 @@ def laborCreateManifest():
 
 def laborScan():
     if (rlaType == "polling"): return 0
+    print(f'Scanning costs: {turnoutCount * scanTime * hourlyRate}')
     return turnoutCount * scanTime
 
 # taken from Stark 2010b, eqn 17
