@@ -1,18 +1,11 @@
 #!/usr/bin/python3
 import json
+import csv
+from argparse import ArgumentParser
 #TODO general error checking on files, configuration
 verifierFile = "verifier-search.json"
-#state = "Virginia"
-#state = "Georgia"
-state = "Texas"
-#state = "Nevada"
-#state = "Louisiana"
-#state = "Mississippi"
-#state = "Tennessee"
-#state = "Indiana"
-#state = "New Jersey"
-#state = "Kentucky"
-#state = "Kansas"
+global state
+state = "Virginia"
 rlaType = "comparison"
 
 # TODO - settle on values for all these constants
@@ -91,14 +84,69 @@ def calculateUpgradeCostsComparison(incapableLocations, incapableCounties, voter
     total += voters/votersPerCvrScanner * cvrScannerCost
     return total
 
-with open(verifierFile) as verifierJson:
-    verifierData = json.load(verifierJson)
-    (incapablePrecincts, incapableCounties, voters) = calculateStateData(verifierData)
-    incapableLocations = incapablePrecincts/precinctsPerLocation
-    cost = 0
-    if (rlaType == "polling"):
-        cost = calculateUpgradeCostsPolling(incapableLocations)
-    else:
-        assert(rlaType == "comparison")
-        cost = calculateUpgradeCostsComparison(incapableLocations, incapableCounties, voters)
-    print(cost)
+def validateInputs():
+    if not (rlaType == "polling" or rlaType == "comparison"):
+        print(f'RLA type must be "polling" or "comparison", is {rlaType}')
+        return False
+    if not (upgradeType == "bmd" or upgradeType == "paper"):
+        print(f'upgrade type must be "bmd" or "paper", is {rlaType}')
+        return False
+    print(f'Estimating upgrade costs for {state} to be able to conduct ballot-{rlaType} audits.')
+    upgradeString = "paper" if upgradeType == "paper" else "BMDs"
+    print(f'Counties that currently use DREs will instead use {upgradeString}.')
+    return True
+
+def getInputs(filename):
+    global state
+    global rlaType
+    global upgradeType
+    try:
+        csvFile = open(filename)
+    except:
+        return True #use default variables if no file found
+    with csvFile:
+        reader = csv.reader(csvFile)
+        for row in reader:
+            key = row[0].lower()
+            value = row[1].lower()
+            if key == "state":
+                state = row[1] #keep capitalization
+            elif key == "rla type":
+                rlaType = value
+            elif key == "upgrade type":
+                upgradeType = value
+        return True
+
+def readArgs():
+    global state
+    global rlaType
+    global upgradeType
+    parser = ArgumentParser()
+    parser.add_argument("-f", "--file", dest="filename", metavar="FILE",
+            help="file to read for state info", default="state.csv")
+    parser.add_argument("-s", "--state", dest="state", metavar="STATE",
+            help = "US state to run the model on", default=None)
+    parser.add_argument("-r", "--rla-type", dest="rlaType", metavar="TYPE", default = "polling",
+            help="which type (polling or comparison) of RLA to upgrade for")
+    parser.add_argument("-u", "--upgrade-type", dest="upgradeType", metavar="TYPE", default = "paper",
+            help="for counties with DREs, whether to upgrade to BMDs or paper")
+    args = parser.parse_args()
+    state = args.state
+    rlaType = args.rlaType
+    upgradeType = args.upgradeType
+    getInputs(args.filename)
+    assert(validateInputs())
+
+if (__name__ == "__main__"):
+    readArgs()
+    with open(verifierFile) as verifierJson:
+        verifierData = json.load(verifierJson)
+        (incapablePrecincts, incapableCounties, voters) = calculateStateData(verifierData)
+        incapableLocations = incapablePrecincts/precinctsPerLocation
+        cost = 0
+        if (rlaType == "polling"):
+            cost = calculateUpgradeCostsPolling(incapableLocations)
+        else:
+            assert(rlaType == "comparison")
+            cost = calculateUpgradeCostsComparison(incapableLocations, incapableCounties, voters)
+        print(cost)
