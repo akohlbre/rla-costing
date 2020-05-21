@@ -1,0 +1,8 @@
+,,
+number of ballots,500001,The total number of ballots expected. Example: 500000
+margin,6,"The margin, in percentage points. Example: 5"
+RLA type,comparison,"The type of RLA, either ""polling"" or ""comparison"". Example: polling"
+hourly wage,19,"The hourly rate for employees, in US dollars. Example: 20"
+pilot,Yes,"Whether or not this is a pilot or first-time RLA, either ""yes"" or ""no"". Example: yes"
+number of contests,10,The number of individual contests that will be audited. Example: 3
+number of locations,1,The number of separate locations that will conduct part of the audit. Example: 1
