@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 import json
 #TODO general error checking on files, configuration
-scannerPerLocation = 1.5
 verifierFile = "verifier-search.json"
 #state = "Virginia"
 #state = "Georgia"
@@ -17,17 +16,18 @@ state = "Texas"
 rlaType = "comparison"
 
 # TODO - settle on values for all these constants
-scannersPerLocation = 1.0
+scannersPerLocation = 1.5
 scannerCost = 3000.0
 bmdsPerLocation = 3.0 #TODO
 # median voters/precinct is 870, average is 1332
 bmdCost = 2500.0
-upgradeType = "bmd"
-numberUnreachedPrecincts = 20.0
-cvrMachinesPerLocation = 3.0
-cvrMachineCost = 10000.0
-cvrScannersPerLocation = 0.25
-cvrScannerCost = 100000.0
+upgradeType = "paper"
+boothsPerLocation = 3.0
+boothCost = 159.0
+cvrScannersPerCounty = 1.0
+cvrScannerCost = 111500.0
+precinctsPerLocation = 1.5
+votersPerCvrScanner = 500000.0
 
 requirements = set([
     ('All Mail Ballot Jurisdiction, Election Day Vote Centers: Ballot Marking Devices for all voters'),
@@ -48,7 +48,13 @@ def collectMatching(stateRecords):
             stateCounties[countyName] = [record]
     return stateCounties
 
-def calculateIncapablePrecincts(verifierData):
+def calculateStateVoters(counties):
+    population = 0
+    for county in counties:
+        population += int(counties[county]["voters"])
+    return population
+
+def calculateStateData(verifierData):
     stateMachines = [record for record in verifierData["codes"]
             if record["state_name"] == state]
     countyRecords = collectMatching(stateMachines)
@@ -59,36 +65,40 @@ def calculateIncapablePrecincts(verifierData):
                 "precincts": countyRecords[county][0]["precincts"],
                 "capabilities": set([indiv["marking_method"] for indiv in countyRecords[county]])
                 }
+    voters = calculateStateVoters(counties)
     incapableCounties = [counties[county]
             for county in counties\
             if counties[county]["capabilities"].isdisjoint(requirements)]
     totalIncapablePrecincts = 0
     for incCounty in incapableCounties:
         totalIncapablePrecincts += int(incCounty["precincts"])
-    return totalIncapablePrecincts
+    return (totalIncapablePrecincts, len(incapableCounties), voters)
 
-def calculateUpgradeCostsPolling(incapablePrecincts):
+def calculateUpgradeCostsPolling(incapableLocations):
     total = 0
-    total += incapablePrecincts * scannersPerLocation * scannerCost
+    total += incapableLocations * scannersPerLocation * scannerCost
+    total += incapableLocations * boothsPerLocation * boothCost
     if (upgradeType == "paper"):
-        total += incapablePrecincts * bmdCost # usually req'd to have one for accessibility
+        total += incapableLocations * bmdCost # usually req'd to have one for accessibility
     if (upgradeType == "bmd"):
-        total += incapablePrecincts * bmdsPerLocation * bmdCost
+        total += incapableLocations * bmdsPerLocation * bmdCost
     return total
 
-def calculateUpgradeCostsComparison(incapablePrecincts, unreachedPrecincts):
+def calculateUpgradeCostsComparison(incapableLocations, incapableCounties, voters):
     total = 0
-    total += incapablePrecincts * cvrMachinesPerLocation * cvrMachineCost
-    total += unreachedPrecincts * cvrScannersPerLocation * cvrScannerCost
+    total += calculateUpgradeCostsPolling(incapableLocations)
+
+    total += voters/votersPerCvrScanner * cvrScannerCost
     return total
 
 with open(verifierFile) as verifierJson:
     verifierData = json.load(verifierJson)
-    incapablePrecincts = calculateIncapablePrecincts(verifierData)
+    (incapablePrecincts, incapableCounties, voters) = calculateStateData(verifierData)
+    incapableLocations = incapablePrecincts/precinctsPerLocation
     cost = 0
     if (rlaType == "polling"):
-        cost = calculateUpgradeCostsPolling(incapablePrecincts)
+        cost = calculateUpgradeCostsPolling(incapableLocations)
     else:
         assert(rlaType == "comparison")
-        cost = calculateUpgradeCostsComparison(incapablePrecincts, numberUnreachedPrecincts)
+        cost = calculateUpgradeCostsComparison(incapableLocations, incapableCounties, voters)
     print(cost)
