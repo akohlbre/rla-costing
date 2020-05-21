@@ -2,22 +2,25 @@
 import math
 import csv
 from argparse import ArgumentParser
-margin = 10.0 # percentage points
-rlaType = "comparison"
+margin = 1.0 # percentage points
+rlaType = "polling"
 riskLimit = 10.0
 hourlyRate = 20.0 # $
 isPilot = True
-contestsCount = 1.0
+contestsCount = 3.0
 numberLocations = 1.0
 turnoutCount = 500000
 
 scanTime = 0.00295204
-executionTime = 0.06297962
+executionTime = 0.0638
 createManifestTime = 0.00004796
 generateSeedTime = 0.93
-consumablesPerLocation = 50 #TODO confirm
+consumablesPerLocation = 50.0
+ballotsPerBox = 400.0
+moveBoxesTime = 0.5
+moveBoxesTimeMaxout = 0.2
 
-PILOT_PENALTY = 0.3 #TODO temp value, confirm.
+PILOT_PENALTY = 0.15
 
 def getInputs(inputFile):
     try:
@@ -106,6 +109,20 @@ def getInputs(inputFile):
                 except:
                     print(f'Couldn\'t parse consumablesPerLocation: {value}')
                     return false
+            elif key == "moveBoxesTime".lower():
+                try:
+                    global moveBoxesTime
+                    moveBoxesTime = float(value)
+                except:
+                    print(f'Couldn\'t parse moveBoxesTime: {value}')
+                    return false
+            elif key == "moveBoxesTimeMaxout".lower():
+                try:
+                    global moveBoxesTimeMaxout
+                    moveBoxesTimeMaxout = float(value)
+                except:
+                    print(f'Couldn\'t parse moveBoxesTimeMaxout: {value}')
+                    return false
         return True
 
 def validateInputs():
@@ -165,13 +182,17 @@ def calculateSampleSizePolling():
     print(f'expected sample size in each location is {asn} ballots')
     return numberLocations * min(asn, turnoutCount/numberLocations)
 
+def laborMoveBoxes(sampleSize):
+    numberBoxes = turnoutCount/ballotsPerBox
+    return min(moveBoxesTime * sampleSize, numberBoxes * moveBoxesTimeMaxout)
+
 def laborExecute():
     if (rlaType == "polling"):
         sampleSize = calculateSampleSizePolling()
     else:
         assert(rlaType == "comparison")
         sampleSize = calculateSampleSizeComparison()
-    return sampleSize * executionTime
+    return sampleSize * executionTime + laborMoveBoxes(sampleSize)
 
 laborFunctions = [laborGenerateSeed, laborCreateManifest, laborScan, laborExecute]
 def calculateLaborCosts():
