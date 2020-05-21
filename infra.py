@@ -2,16 +2,14 @@
 import json
 import csv
 from argparse import ArgumentParser
-#TODO general error checking on files, configuration
 verifierFile = "verifier-search.json"
 global state
 state = "Virginia"
 rlaType = "comparison"
 
-# TODO - settle on values for all these constants
 scannersPerLocation = 1.5
 scannerCost = 3000.0
-bmdsPerLocation = 3.0 #TODO
+bmdsPerLocation = 3.0
 # median voters/precinct is 870, average is 1332
 bmdCost = 2500.0
 upgradeType = "paper"
