@@ -20,7 +20,12 @@ consumablesPerLocation = 50 #TODO confirm
 PILOT_PENALTY = 0.3 #TODO temp value, confirm.
 
 def getInputs(inputFile):
-    with open(inputFile) as csvFile:
+    try:
+        csvFile = open(inputFile)
+    except:
+        print("WARNING: no input file found, using default values for all variables")
+        return True #use default variables if no file found
+    with csvFile:
         reader = csv.reader(csvFile)
         for row in reader:
             key = row[0].lower()
@@ -101,7 +106,6 @@ def getInputs(inputFile):
                 except:
                     print(f'Couldn\'t parse consumablesPerLocation: {value}')
                     return false
-
         return True
 
 def validateInputs():
