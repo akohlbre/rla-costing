@@ -50,6 +50,9 @@ def calculateStateVoters(counties):
 def calculateStateData(verifierData):
     stateMachines = [record for record in verifierData["codes"]
             if record["state_name"] == state]
+    if (len(stateMachines) == 0):
+        print(f'Couldn\'t find data on state {state}. Check spelling and capitalization')
+        assert(False)
     countyRecords = collectMatching(stateMachines)
     counties = {}
     for county in countyRecords:
