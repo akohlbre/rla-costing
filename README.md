@@ -1,9 +1,16 @@
 # rla-costing
-Developing a cost model for Risk-Limiting Audits
+Developing a cost model for Risk-Limiting Audits.
 
-## Model of Operational Costs
+This was developed by Lauren Knight, Anne Kohlbrenner, and Corbin Stevens
+as part of a project for WWS/COS 586 at Princeton University.
+The associated written report is available upon request.
+
+The models here should be considered works-in-progress that can be useful as guides, but
+they are not authoritative references.
+
+## Model of Operational Costs: `model.py`
 ### Running the Model
-1. You can download the model and run it locally with Python 3.
+1. You can download the model and run it locally with [Python 3](https://www.python.org/downloads/).
 Specify a filename with the `-f` flag to have the model use it as the input. If no file
 is specified, the model will look for a file named `state.csv` and use it. If that file does not
 exist, the model will use default values. See below for the input format
@@ -33,9 +40,9 @@ Capitalization doesn't matter, and there's no need to have a header row ("name o
 or a column for explanations, although neither is problematic.
 The order of the rows does not matter.
 
-## Model of Infrastructure Upgrade Costs
+## Model of Infrastructure Upgrade Costs: `infra.py`
 ### Running the Model
-1. You can download the model and run it locally with Python 3.
+1. You can download the model and run it locally with [Python 3](https://www.python.org/downloads/).
 Specify a filename with the `-f` flag to have the model use it as the input. If no file
 is specified, the model will look for a file named `state.csv` and use it. Alternatively,
 specify the three inputs with command line arguments, for example:
