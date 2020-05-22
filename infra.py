@@ -2,24 +2,24 @@
 import json
 import csv
 from argparse import ArgumentParser
-verifierFile = "verifier-search.json"
-global state
+
+# user-configurable variables
 state = "Virginia"
 rlaType = "comparison"
+upgradeType = "paper"
 
+# constants
 scannersPerLocation = 1.5
 scannerCost = 3000.0
 bmdsPerLocation = 3.0
-# median voters/precinct is 870, average is 1332
 bmdCost = 2500.0
-upgradeType = "paper"
 boothsPerLocation = 3.0
 boothCost = 159.0
 cvrScannersPerCounty = 1.0
 cvrScannerCost = 111500.0
 precinctsPerLocation = 1.5
 votersPerCvrScanner = 500000.0
-
+verifierFile = "verifier-search.json"
 requirements = set([
     ('All Mail Ballot Jurisdiction, Election Day Vote Centers: Ballot Marking Devices for all voters'),
     ('All Mail Ballot Jurisdiction, Election Day Vote Centers: Hand marked paper ballots and BMDs'),
@@ -29,6 +29,10 @@ requirements = set([
     ('Vote Center Jurisdiction, Hand marked paper ballots and BMDs'),
     ])
 
+# given a dictionary of records that belong to one state,
+#  collect together all the records for each county, determined by FIPS code
+#  (the dataset contains multiple records for each county when it has different
+#  sets of voting equipment)
 def collectMatching(stateRecords):
     stateCounties = {}
     for record in stateRecords:
@@ -39,12 +43,17 @@ def collectMatching(stateRecords):
             stateCounties[countyName] = [record]
     return stateCounties
 
+# Given a dictionary of aggregated records for each county, add up
+#  the total number of registered voters in the state
 def calculateStateVoters(counties):
     population = 0
     for county in counties:
         population += int(counties[county]["voters"])
     return population
 
+# calculate the number of precincts and counties that do not have the
+#  necessary equipment to conduct an RLA, as well as the total
+#  number of voters in the state
 def calculateStateData(verifierData):
     stateMachines = [record for record in verifierData["codes"]
             if record["state_name"] == state]
@@ -68,6 +77,8 @@ def calculateStateData(verifierData):
         totalIncapablePrecincts += int(incCounty["precincts"])
     return (totalIncapablePrecincts, len(incapableCounties), voters)
 
+# based on the user-specified upgrade type (bmd or paper) calculate the
+#  equipment costs a state would incur to allow for RLAs to occur
 def calculateUpgradeCostsPolling(incapableLocations):
     total = 0
     total += incapableLocations * scannersPerLocation * scannerCost
@@ -78,6 +89,8 @@ def calculateUpgradeCostsPolling(incapableLocations):
         total += incapableLocations * bmdsPerLocation * bmdCost
     return total
 
+# in addition to the above, for comparison audits, jurisdictions must
+#  purchase high-speed imprinting scanners that can export CVRs
 def calculateUpgradeCostsComparison(incapableLocations, incapableCounties, voters):
     total = 0
     total += calculateUpgradeCostsPolling(incapableLocations)
@@ -150,4 +163,4 @@ if (__name__ == "__main__"):
         else:
             assert(rlaType == "comparison")
             cost = calculateUpgradeCostsComparison(incapableLocations, incapableCounties, voters)
-        print(cost)
+        print(f'Total estimated upgrade cost: ${cost}')
