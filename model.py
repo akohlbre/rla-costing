@@ -2,14 +2,17 @@
 import math
 import csv
 from argparse import ArgumentParser
-margin = 2.8 # percentage points
+
+# user-configurable variables
+margin = 0.23 # percentage points
 rlaType = "comparison"
 riskLimit = 10.0
 hourlyRate = 20.0 # $
 isPilot = False
-numberLocations = 92.0
-turnoutCount = 3751016.0
+numberLocations = 83.0
+turnoutCount = 4799284
 
+# constants
 scanTime = 0.00295204
 executionTime = 0.0638
 createManifestTime = 0.00004796
@@ -18,8 +21,7 @@ consumablesPerLocation = 50.0
 ballotsPerBox = 400.0
 moveBoxesTime = 0.5
 moveBoxesTimeMaxout = 0.2
-
-PILOT_PENALTY = 0.15
+pilotPenalty = 0.15
 
 def getInputs(inputFile):
     try:
@@ -126,7 +128,7 @@ def validateInputs():
         return False
     if not (0 < riskLimit and riskLimit < 30):
         if (riskLimit > 30 and riskLimit < 100):
-            print(f'Nonstandard risk limit({riskLimit}%, going ahead anyway')
+            print(f'Nonstandard risk limit({riskLimit}%), going ahead anyway')
         else:
             print(f'risk limit is invalid, must be between 0 and 100, is {riskLimit}')
             return False
@@ -138,12 +140,17 @@ def validateInputs():
     print("\n")
     return True
 
+# each location must generate its own random seed
 def laborGenerateSeed():
     return generateSeedTime * numberLocations
 
+# creating manifests means recording where each ballot is stored
 def laborCreateManifest():
     return turnoutCount * createManifestTime
 
+# for comparison audits, ballots must be rescanned with an imprinting scanner
+#  that can output CVRs (unless the jurisdiction has ballots and voting machines
+#  that can achieve this -- rare)
 def laborScan():
     if (rlaType == "polling"): return 0
     print(f'Scanning costs: {turnoutCount * scanTime * hourlyRate}')
@@ -159,7 +166,7 @@ def calculateSampleSizeComparison():
             (math.log(alpha) + k * math.log(1.0 - (1.0/(2.0*gamma)))) * \
             (1.0/mu)
     sample = math.ceil(sample)
-    print(f'expected sample size in each location is {sample} ballots')
+    print(f'expected sample size is {sample} ballots')
     return numberLocations * min(sample, turnoutCount/numberLocations)
 
 # adapted from https://www.stat.berkeley.edu/~stark/Vote/ballotPollTools.htm
@@ -169,13 +176,17 @@ def calculateSampleSizePolling():
     zl = math.log(2.0 * (1-s))
     asn = math.ceil((math.log(1.0/(riskLimit/100.0)) + zw/2.0) / (s * zw + (1-s)*zl))
 
-    print(f'expected sample size in each location is {asn} ballots')
+    print(f'expected sample size is {asn} ballots')
     return numberLocations * min(asn, turnoutCount/numberLocations)
 
+# based on RI data, the time to move boxes decreases per-box when all boxes
+#  must be accessed
 def laborMoveBoxes(sampleSize):
     numberBoxes = turnoutCount/ballotsPerBox
     return min(moveBoxesTime * sampleSize, numberBoxes * moveBoxesTimeMaxout)
 
+# execution includes pulling the specific ballot, examining the specific contest,
+#  and interpreting the marks
 def laborExecute():
     if (rlaType == "polling"):
         sampleSize = calculateSampleSizePolling()
@@ -191,14 +202,14 @@ def calculateLaborCosts():
         totalHours += laborFunction()
     totalLaborCost = totalHours * hourlyRate
     if (isPilot):
-        totalLaborCost = totalLaborCost + totalLaborCost * PILOT_PENALTY
+        totalLaborCost = totalLaborCost + totalLaborCost * pilotPenalty
     return totalLaborCost
 
 def consumablesCosts():
     return consumablesPerLocation * numberLocations
 
+# can be expanded as necessary
 otherCostsFunctions = [consumablesCosts]
-
 def calculateOtherCosts():
     total = 0
     for otherCostsFunction in otherCostsFunctions:
